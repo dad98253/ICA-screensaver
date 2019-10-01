@@ -6,12 +6,19 @@
 //so you'd need to provide a description string
 //and so forth.
 
+#define SOIL_CHECK_FOR_GL_ERRORS 0
 
 #include <windows.h>
 #include  <scrnsave.h>
 #include  <GL/gl.h>
 #include <GL/glu.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "screensaver1\resource.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "screensaver1\stb_image.h"
 
 //get rid of these warnings:
 //truncation from const double to float
@@ -41,11 +48,59 @@ void OnTimer(HDC hDC);
 
 int Width, Height; //globals for size of screen
 
+GLuint	texture[1];			// Storage For One Texture
+
 
 //////////////////////////////////////////////////
 ////   INFRASTRUCTURE -- THE THREE FUNCTIONS   ///
 //////////////////////////////////////////////////
 
+int LoadGLTextures()                                    // Load Bitmaps And Convert To Textures
+{
+	/* load an image file directly as a new OpenGL texture */
+/*	texture[0] = SOIL_load_OGL_texture
+	(
+		"Data/img_test.bmp",
+		SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID,
+		SOIL_FLAG_INVERT_Y
+	);
+
+	if (texture[0] == 0)
+		return false;
+
+
+	// Typical Texture Generation Using Data From The Bitmap
+	glBindTexture(GL_TEXTURE_2D, texture[0]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+*/
+
+	//unsigned int texture;
+	glGenTextures(1, &texture[0]);
+	glBindTexture(GL_TEXTURE_2D, texture[0]);
+	// set the texture wrapping/filtering options (on the currently bound texture object)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// load and generate the texture
+	int width, height, nrChannels;
+	unsigned char* data = stbi_load("img_test.jpg", &width, &height, &nrChannels, 0);
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		//glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+	{
+		printf("Failed to load texture\n");
+	}
+	stbi_image_free(data);
+
+	return true;                                        // Return Success
+}
 
 // Screen Saver Procedure
 LRESULT WINAPI ScreenSaverProc(HWND hWnd, UINT message,
@@ -58,6 +113,7 @@ LRESULT WINAPI ScreenSaverProc(HWND hWnd, UINT message,
 	switch (message) {
 
 	case WM_CREATE:
+	
 		// get window dimensions
 		GetClientRect(hWnd, &rect);
 		Width = rect.right;
@@ -67,6 +123,7 @@ LRESULT WINAPI ScreenSaverProc(HWND hWnd, UINT message,
 		GetConfig();
 
 		// setup OpenGL, then animation
+		LoadGLTextures();
 		InitGL(hWnd, hDC, hRC);
 		SetupAnimation(Width, Height);
 
@@ -230,7 +287,7 @@ void OnTimer(HDC hDC) //increment and display
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	spin = spin + 1;
-
+	/*
 	glPushMatrix();
 	glRotatef(spin, 0.0, 0.0, 1.0);
 
@@ -242,16 +299,21 @@ void OnTimer(HDC hDC) //increment and display
 		glRotatef(spin * -3.0, 0.0, 0.0, 1.0);
 	else
 		glRotatef(spin * -1.0, 0.0, 0.0, 1.0);
-
+*/
 	//draw the square (rotated to be a diamond)
 
 	float xvals[] = { -30.0, 0.0, 30.0, 0.0 };
 	float yvals[] = { 0.0, -30.0, 0.0, 30.0 };
+	float txvals[] = { 0.0, 1.0, 1.0, 0.0 };
+	float tyvals[] = { 0.0, 0.0, 1.0, 1.0 };
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glBindTexture(GL_TEXTURE_2D, texture[0]);
 	glBegin(GL_POLYGON);
-	for (int i = 0; i < 4; i++)
+	for (int i = 0; i < 4; i++) {
+		glTexCoord2f(txvals[i], tyvals[i]);
 		glVertex2f(xvals[i], yvals[i]);
+	}
 	glEnd();
 
 	glPopMatrix();
@@ -324,4 +386,3 @@ void WriteConfig(HWND hDlg)
 	}
 
 }
-
