@@ -7,11 +7,23 @@
 //and so forth.
 
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 #include <windows.h>
 #include  <scrnsave.h>
+#include <gl/glew.h>
 #include  <GL/gl.h>
 #include <GL/glu.h>
 #include "screensaver1\resource.h"
+
+// Include GLM
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+using namespace glm;
+
+#include <common/shader.hpp>
+#include <common/texture.hpp>
 
 //get rid of these warnings:
 //truncation from const double to float
@@ -37,9 +49,120 @@ void WriteConfig(HWND hDlg);
 void SetupAnimation(int Width, int Height);
 void CleanupAnimation();
 void OnTimer(HDC hDC);
+int LoadGLTextures();
 
 
 int Width, Height; //globals for size of screen
+// Our vertices. Tree consecutive floats give a 3D vertex; Three consecutive vertices give a triangle.
+	// A cube has 6 faces with 2 triangles each, so this makes 6*2=12 triangles, and 12*3 vertices
+static const GLfloat g_vertex_buffer_data[] = {
+-1.0f,-1.0f,-1.0f,
+-1.0f,-1.0f, 1.0f,
+-1.0f, 1.0f, 1.0f,
+-1.0f,-1.0f,-1.0f,
+-1.0f, 1.0f, 1.0f,
+-1.0f, 1.0f,-1.0f,
+
+ 1.0f, 1.0f, 1.0f,
+ 1.0f,-1.0f,-1.0f,
+ 1.0f, 1.0f,-1.0f,
+ 1.0f,-1.0f,-1.0f,
+ 1.0f, 1.0f, 1.0f,
+ 1.0f,-1.0f, 1.0f,
+
+ 1.0f,-1.0f, 1.0f,
+-1.0f,-1.0f,-1.0f,
+ 1.0f,-1.0f,-1.0f,
+ 1.0f,-1.0f, 1.0f,
+-1.0f,-1.0f, 1.0f,
+-1.0f,-1.0f,-1.0f,
+
+ 1.0f, 1.0f, 1.0f,
+ 1.0f, 1.0f,-1.0f,
+-1.0f, 1.0f,-1.0f,
+ 1.0f, 1.0f, 1.0f,
+-1.0f, 1.0f,-1.0f,
+-1.0f, 1.0f, 1.0f,
+
+ 1.0f, 1.0f,-1.0f,
+-1.0f,-1.0f,-1.0f,
+-1.0f, 1.0f,-1.0f,
+ 1.0f, 1.0f,-1.0f,
+ 1.0f,-1.0f,-1.0f,
+-1.0f,-1.0f,-1.0f,
+
+-1.0f, 1.0f, 1.0f,
+-1.0f,-1.0f, 1.0f,
+ 1.0f,-1.0f, 1.0f,
+ 1.0f, 1.0f, 1.0f,
+-1.0f, 1.0f, 1.0f,
+ 1.0f,-1.0f, 1.0f
+};
+
+
+// Two UV coordinatesfor each vertex.
+static const GLfloat g_uv_buffer_data[] = {
+	0.0f, 0.0f ,
+	1.0f, 0.0f ,
+	1.0f, 1.0f ,
+	0.0f, 0.0f ,
+	1.0f, 1.0f ,
+	0.0f, 1.0f ,
+
+	1.0f, 1.0f ,
+	0.0f, 0.0f ,
+	1.0f, 0.0f ,
+	0.0f, 0.0f ,
+	1.0f, 1.0f ,
+	0.0f, 1.0f ,
+
+	1.0f, 1.0f ,
+	0.0f, 0.0f ,
+	1.0f, 0.0f ,
+	1.0f, 1.0f ,
+	0.0f, 1.0f ,
+	0.0f, 0.0f ,
+
+	1.0f, 1.0f ,
+	0.0f, 1.0f ,
+	0.0f, 0.0f ,
+	1.0f, 1.0f ,
+	0.0f, 0.0f ,
+	1.0f, 0.0f ,
+
+	1.0f, 1.0f ,
+	0.0f, 0.0f ,
+	1.0f, 0.0f ,
+	1.0f, 1.0f ,
+	0.0f, 1.0f ,
+	0.0f, 0.0f ,
+
+	0.0f, 1.0f ,
+	0.0f, 0.0f ,
+	1.0f, 0.0f ,
+	1.0f, 1.0f ,
+	0.0f, 1.0f ,
+	1.0f, 0.0f
+};
+
+GLuint vertexbuffer;
+GLuint uvbuffer;
+GLuint TextureID;
+GLuint Texture;
+GLuint programID;
+GLuint MatrixID;
+GLuint VertexArrayID;
+glm::mat4 Projection;
+glm::mat4 View;
+glm::mat4 ViewTemp;
+glm::mat4 Model;
+glm::mat4 ModelTemp;
+glm::mat4 MVP;
+
+
+inline float Deg2Rad(float degrees) {
+	return degrees * (float)(M_PI / 180.0f);
+}
 
 
 //////////////////////////////////////////////////
@@ -163,7 +286,6 @@ BOOL WINAPI RegisterDialogClasses(HANDLE hInst)
 // Initialize OpenGL
 static void InitGL(HWND hWnd, HDC & hDC, HGLRC & hRC)
 {
-
 	PIXELFORMATDESCRIPTOR pfd;
 	ZeroMemory(&pfd, sizeof pfd);
 	pfd.nSize = sizeof pfd;
@@ -180,6 +302,9 @@ static void InitGL(HWND hWnd, HDC & hDC, HGLRC & hRC)
 
 	hRC = wglCreateContext(hDC);
 	wglMakeCurrent(hDC, hRC);
+
+	LoadGLTextures();
+
 
 }
 
@@ -212,13 +337,13 @@ void SetupAnimation(int Width, int Height)
 	glClearColor(0.0, 0.0, 0.0, 0.0); //0.0s is black
 
 
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glShadeModel(GL_SMOOTH);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	//glShadeModel(GL_SMOOTH);
 
 	//no need to initialize any objects
 	//but this is where I'd do it
 
-	glColor3f(0.1, 1.0, 0.3); //green
+	//glColor3f(0.1, 1.0, 0.3); //green
 
 }
 
@@ -228,9 +353,14 @@ static GLfloat spin = 0;   //a global to keep track of the square's spinning
 void OnTimer(HDC hDC) //increment and display
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	spin = spin + 1;
-
+	// Initialize GLEW
+	glewExperimental = true; // Needed for core profile
+	if (glewInit() != GLEW_OK) {
+		fprintf(stderr, "Failed to initialize GLEW\n");
+		return;
+	}
+	spin = mod(spin + 1.0f,360.0f);
+/*
 	glPushMatrix();
 	glRotatef(spin, 0.0, 0.0, 1.0);
 
@@ -259,6 +389,72 @@ void OnTimer(HDC hDC) //increment and display
 	glFlush();
 	SwapBuffers(hDC);
 	glPopMatrix();
+	*/
+
+	// set the orientation of the cube
+	if (bTumble) {
+		ModelTemp = glm::rotate(Model, glm::radians(spin), glm::vec3(0.0f, 0.0f, 1.0f)); // where the vector is axis of rotation (e.g. about the z-axis)
+		ModelTemp = glm::rotate(ModelTemp, glm::radians(spin), glm::vec3(0.0f, 1.0f, 0.0f)); // where the vector is axis of rotation (e.g. about the y-axis)
+		ModelTemp = glm::rotate(ModelTemp, glm::radians(spin), glm::vec3(1.0f, 0.0f, 0.0f)); // where the vector is axis of rotation (e.g. about the x-axis)
+	}
+	else {
+		ModelTemp = Model;
+	}
+	// set the view
+	//ViewTemp = glm::translate(ViewTemp, glm::vec3(0.0f, 1.3f, 0.0f)); // where the vector is the translation (e.g. 5 units in each axis)
+	ViewTemp = glm::translate(View, glm::vec3(cosf(Deg2Rad(spin)) * 10.0f, sinf(Deg2Rad(spin)) * 10.0f, 0.0f)); // where the vector is the translation (e.g. 5 units in each axis)
+		
+	// Our ModelViewProjection : multiplication of our 3 matrices
+	MVP = Projection * ViewTemp * ModelTemp; // Remember, matrix multiplication is the other way around
+
+	// Use our shader
+	glUseProgram(programID);
+
+	// Send our transformation to the currently bound shader, 
+	// in the "MVP" uniform
+	glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+
+	// Bind our texture in Texture Unit 0
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, Texture);
+	// Set our "myTextureSampler" sampler to use Texture Unit 0
+	glUniform1i(TextureID, 0);
+
+	// 1rst attribute buffer : vertices
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
+	glVertexAttribPointer(
+		0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+		3,                  // size
+		GL_FLOAT,           // type
+		GL_FALSE,           // normalized?
+		0,                  // stride
+		(void*)0            // array buffer offset
+	);
+
+	// 2nd attribute buffer : UVs
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+	glVertexAttribPointer(
+		1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+		2,                                // size : U+V => 2
+		GL_FLOAT,                         // type
+		GL_FALSE,                         // normalized?
+		0,                                // stride
+		(void*)0                          // array buffer offset
+	);
+
+	// Draw the triangle !
+	glDrawArrays(GL_TRIANGLES, 0, 12 * 3); // 12*3 indices starting at 0 -> 12 triangles
+
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+
+	// Swap buffers
+	//glfwSwapBuffers(window);
+	//glfwPollEvents();
+	SwapBuffers(hDC);
+
 }
 
 void CleanupAnimation()
@@ -277,7 +473,7 @@ void GetConfig()
 	//DWORD lpdw;
 
 	if (RegOpenKeyEx(HKEY_CURRENT_USER,
-		"Software\\GreenSquare", //lpctstr
+		"Software\\ICAscreensaver", //lpctstr
 		0,                      //reserved
 		KEY_QUERY_VALUE,
 		&key) == ERROR_SUCCESS)
@@ -306,7 +502,7 @@ void WriteConfig(HWND hDlg)
 	DWORD lpdw;
 
 	if (RegCreateKeyEx(HKEY_CURRENT_USER,
-		"Software\\GreenSquare", //lpctstr
+		"Software\\ICAscreensaver", //lpctstr
 		0,                      //reserved
 		(LPSTR)"",                     //ptr to null-term string specifying the object type of this key
 		REG_OPTION_NON_VOLATILE,
@@ -325,3 +521,62 @@ void WriteConfig(HWND hDlg)
 
 }
 
+int LoadGLTextures()                                    // Load Bitmaps And Convert To Textures
+{
+	/* load an image file directly as a new OpenGL texture */
+
+	// Initialize GLEW
+	glewExperimental = true; // Needed for core profile
+	GLenum err = glewInit();
+	if (err != GLEW_OK) {
+		fprintf(stderr, "Failed to initialize GLEW: %s\n", glewGetErrorString(err));
+		return -1;
+	}
+	   	 
+	// Enable depth test
+	glEnable(GL_DEPTH_TEST);
+	// Accept fragment if it closer to the camera than the former one
+	glDepthFunc(GL_LESS);
+		
+	glGenVertexArrays(1, &VertexArrayID);
+	glBindVertexArray(VertexArrayID);
+
+	// Create and compile our GLSL program from the shaders
+	programID = LoadShaders("TransformVertexShader.vertexshader", "TextureFragmentShader.fragmentshader");
+
+	// Get a handle for our "MVP" uniform
+	MatrixID = glGetUniformLocation(programID, "MVP");
+
+	// Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
+	Projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
+	// Camera matrix
+	View = glm::translate(mat4(1.0f), glm::vec3(0.0f, 0.0f, -50.0f)); // where the vector is the translation (e.g. 5 units in each axis)
+		/*View = glm::lookAt(
+		glm::vec3(4, 3, 3), // Camera is at (4,3,3), in World Space
+		glm::vec3(0, 0, 0), // and looks at the origin
+		glm::vec3(0, 1, 0)  // Head is up (set to 0,-1,0 to look upside-down)
+	);*/
+	// Model matrix : an identity matrix (model will be at the origin) scaled by a constant
+	Model = glm::mat4(1.0f);
+	Model = glm::scale(Model, glm::vec3(5.0f, 5.0f, 5.0f)); // where the vector is the scale factor for eachaxis (e.g. .25 units in all axes)
+	// Our ModelViewProjection : multiplication of our 3 matrices
+	MVP = Projection * View * Model; // Remember, matrix multiplication is the other way around
+
+	// Load the texture using any two methods
+//	  Texture = loadBMP_custom("uvtemplate.bmp");
+	Texture = loadBMP_custom("ICA-logo-on-black.bmp");
+	//	GLuint Texture = loadDDS("uvtemplate.DDS");
+
+	// Get a handle for our "myTextureSampler" uniform
+	TextureID = glGetUniformLocation(programID, "myTextureSampler");
+		
+	glGenBuffers(1, &vertexbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
+		
+	glGenBuffers(1, &uvbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(g_uv_buffer_data), g_uv_buffer_data, GL_STATIC_DRAW);
+	
+	return(0);
+}
