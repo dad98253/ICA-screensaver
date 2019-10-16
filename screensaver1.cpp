@@ -1,10 +1,11 @@
 
-//greensquare.cpp is an open-source example
-//screensaver by Rachel Grey, lemming@alum.mit.edu.
-//Paste into an IDE to compile if desired.
-//I haven't chosen to include the resource file,
-//so you'd need to provide a description string
-//and so forth.
+// ICA branded screensaver based on:
+// greensquare.cpp is an open-source example
+// screensaver by Rachel Grey, lemming@alum.mit.edu.
+// All changes made to these two examples are:
+// copyright(c) John Kuras 2019
+// The terms and conditions for all of these changes are WTFPL
+
 
 
 #define _USE_MATH_DEFINES
