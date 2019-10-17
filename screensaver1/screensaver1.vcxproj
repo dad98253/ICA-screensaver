@@ -23,6 +23,7 @@
     <ProjectGuid>{E48C9CAA-AD77-4993-BF1D-EF2B54E904B6}</ProjectGuid>
     <RootNamespace>screensaver1</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>screensaver4</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -70,20 +71,24 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\Users\dad\Desktop\temp\opengl\glew-2.1.0-win32\glew-2.1.0\include;C:\Users\dad\Desktop\temp\opengl\glm\glm;C:\Users\dad\Desktop\temp\opengl;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\dad\Desktop\temp\opengl\glew-2.1.0-win32\glew-2.1.0\lib\Release\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(GLEWINC);$(GLMINC);$(OGLEXAMPLES);C:\Downloads\glew-2.1.0\include;C:\Users\admin\source\repos\glm;C:\Users\admin\source\repos\ogl;$(IncludePath)</IncludePath>
+    <LibraryPath>$(GLEWLIB)\x64;$(LibraryPath)</LibraryPath>
+    <ReferencePath>$(SolutionDir)\x64;$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>C:\Users\dad\Desktop\temp\opengl\glew-2.1.0-win32\glew-2.1.0\include;C:\Users\dad\Desktop\temp\opengl\glm\glm;C:\Users\dad\Desktop\temp\opengl;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\dad\Desktop\temp\opengl\glew-2.1.0-win32\glew-2.1.0\lib\Release\Win32;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(GLEWINC);$(GLMINC);$(OGLEXAMPLES);C:\Users\dad\Desktop\temp\opengl\glew-2.1.0-win32\glew-2.1.0\include;C:\Users\dad\Desktop\temp\opengl\glm\glm;C:\Users\dad\Desktop\temp\opengl;$(IncludePath)</IncludePath>
+    <LibraryPath>$(GLEWLIB)\Win32;$(LibraryPath)</LibraryPath>
+    <ReferencePath>$(SolutionDir);$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>C:\Users\dad\Desktop\temp\opengl\glew-2.1.0-win32\glew-2.1.0\include;C:\Users\dad\Desktop\temp\opengl\glm\glm;C:\Users\dad\Desktop\temp\opengl;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\dad\Desktop\temp\opengl\glew-2.1.0-win32\glew-2.1.0\lib\Release\Win32;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(GLEWINC);$(GLMINC);$(OGLEXAMPLES);C:\Users\dad\Desktop\temp\opengl\glew-2.1.0-win32\glew-2.1.0\include;C:\Users\dad\Desktop\temp\opengl\glm\glm;C:\Users\dad\Desktop\temp\opengl;$(IncludePath)</IncludePath>
+    <LibraryPath>$(GLEWLIB)\Win32;$(LibraryPath)</LibraryPath>
+    <ReferencePath>$(SolutionDir);$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>C:\Users\dad\Desktop\temp\opengl\glew-2.1.0-win32\glew-2.1.0\include;C:\Users\dad\Desktop\temp\opengl\glm\glm;C:\Users\dad\Desktop\temp\opengl;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\dad\Desktop\temp\opengl\glew-2.1.0-win32\glew-2.1.0\lib\Release\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(GLEWINC);$(GLMINC);$(OGLEXAMPLES);C:\Downloads\glew-2.1.0\include;C:\Users\admin\source\repos\glm;C:\Users\admin\source\repos\ogl;$(IncludePath)</IncludePath>
+    <LibraryPath>$(GLEWLIB)\x64;$(LibraryPath)</LibraryPath>
+    <ReferencePath>$(SolutionDir)\x64;$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -147,6 +152,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />
+    <ClInclude Include="shader.hpp" />
+    <ClInclude Include="texture.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />

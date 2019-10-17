@@ -14,6 +14,7 @@
 #include <windows.h>
 #include  <scrnsave.h>
 #include <gl/glew.h>
+//#include <GL/glcorearb.h>
 #include  <GL/gl.h>
 #include <GL/glu.h>
 #include "screensaver1\resource.h"
@@ -23,8 +24,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 using namespace glm;
 
-#include <common/shader.hpp>
-#include <common/texture.hpp>
+#include "screensaver1\shader.hpp"
+#include "screensaver1\texture.hpp"
 
 //get rid of these warnings:
 //truncation from const double to float
@@ -159,6 +160,36 @@ glm::mat4 ViewTemp;
 glm::mat4 Model;
 glm::mat4 ModelTemp;
 glm::mat4 MVP;
+
+const char* vs_source =
+"#version 330 core\n"
+"// Input vertex data, different for all executions of this shader.\n"
+"layout(location = 0) in vec3 vertexPosition_modelspace;\n"
+"layout(location = 1) in vec2 vertexUV;\n"
+"// Output data ; will be interpolated for each fragment.\n"
+"out vec2 UV;\n"
+"// Values that stay constant for the whole mesh.\n"
+"uniform mat4 MVP;\n"
+"void main() {\n"
+"// Output position of the vertex, in clip space : MVP * position\n"
+"gl_Position = MVP * vec4(vertexPosition_modelspace, 1);\n"
+"// UV of the vertex. No special space for this one.\n"
+"UV = vertexUV;\n"
+"}\n";
+
+
+const char* fs_source =
+"#version 330 core/n"
+"// Interpolated values from the vertex shaders/n"
+"in vec2 UV;/n"
+"// Ouput data/n"
+"out vec3 color;/n"
+"// Values that stay constant for the whole mesh./n"
+"uniform sampler2D myTextureSampler;/n"
+"void main() {/n"
+"// Output color = color of the texture at the specified UV/n"
+"color = texture(myTextureSampler, UV).rgb;/n"
+"}/n";
 
 
 inline float Deg2Rad(float degrees) {
@@ -355,11 +386,11 @@ void OnTimer(HDC hDC) //increment and display
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	// Initialize GLEW
-	glewExperimental = true; // Needed for core profile
+	/*glewExperimental = true; // Needed for core profile
 	if (glewInit() != GLEW_OK) {
 		fprintf(stderr, "Failed to initialize GLEW\n");
 		return;
-	}
+	}*/
 	spin = mod(spin + 1.0f,360.0f);
 /*
 	glPushMatrix();
@@ -543,7 +574,8 @@ int LoadGLTextures()                                    // Load Bitmaps And Conv
 	glBindVertexArray(VertexArrayID);
 
 	// Create and compile our GLSL program from the shaders
-	programID = LoadShaders("TransformVertexShader.vertexshader", "TextureFragmentShader.fragmentshader");
+//	programID = LoadShaders("TransformVertexShader.vertexshader", "TextureFragmentShader.fragmentshader");
+	programID = LoadShaders(vs_source, fs_source);
 
 	// Get a handle for our "MVP" uniform
 	MatrixID = glGetUniformLocation(programID, "MVP");
