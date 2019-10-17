@@ -12,6 +12,8 @@
 #include <math.h>
 
 #include <windows.h>
+#include <windowsx.h>
+#include <tchar.h>
 #include  <scrnsave.h>
 #include <gl/glew.h>
 //#include <GL/glcorearb.h>
@@ -160,6 +162,8 @@ glm::mat4 ViewTemp;
 glm::mat4 Model;
 glm::mat4 ModelTemp;
 glm::mat4 MVP;
+#define MAXFILENAME	1000
+char lpTextureMapFileNameStr[MAXFILENAME];
 
 const char* vs_source =
 "#version 330 core\n"
@@ -258,6 +262,8 @@ ScreenSaverConfigureDialog(HWND hDlg, UINT message,
 	//would need this for slider bars or other common controls
 
 	HWND aCheck;
+	HWND hWndBitmapEdit;
+	TCHAR szFile[MAXFILENAME] = { 0 };       // if using TCHAR macros
 
 	switch (message)
 	{
@@ -267,7 +273,10 @@ ScreenSaverConfigureDialog(HWND hDlg, UINT message,
 
 		GetConfig();
 
-		aCheck = GetDlgItem(hDlg, IDC_TUMBLE);
+		hWndBitmapEdit = GetDlgItem(hDlg, IDC_BITMAP_NAME_EDIT);
+		if (hWndBitmapEdit) Edit_SetText(hWndBitmapEdit, lpTextureMapFileNameStr);
+
+		aCheck = GetDlgItem(hDlg, IDC_TUMBLE_CHECK);
 		SendMessage(aCheck, BM_SETCHECK,
 			bTumble ? BST_CHECKED : BST_UNCHECKED, 0);
 
@@ -277,11 +286,50 @@ ScreenSaverConfigureDialog(HWND hDlg, UINT message,
 		switch (LOWORD(wParam))
 		{
 
-		case IDC_TUMBLE:
-			bTumble = (IsDlgButtonChecked(hDlg, IDC_TUMBLE) == BST_CHECKED);
+		case IDC_TUMBLE_CHECK:
+			bTumble = (IsDlgButtonChecked(hDlg, IDC_TUMBLE_CHECK) == BST_CHECKED);
 			return TRUE;
 
-			//cases for other controls would go here
+		case IDC_BITMAP_NAME_EDIT:
+			if (HIWORD(wParam) == EN_CHANGE)
+			{
+				if (Edit_GetTextLength((HWND)lParam) >= (MAXFILENAME - 1)) {
+					//MsgBox("The Password that you entered is too long.\nIt must be less than 230 chartacters.\nIt will be truncated...");
+					char lpTempStr[MAXFILENAME];
+					Edit_GetText((HWND)lParam, lpTempStr, MAXFILENAME);
+					lpTempStr[MAXFILENAME-1] = '\000';
+					Edit_SetText((HWND)lParam, lpTempStr);
+					return TRUE;
+				}
+			}
+			Edit_GetText((HWND)lParam, lpTextureMapFileNameStr, MAXFILENAME);
+			return TRUE;
+
+		case IDC_OPENFILE_BUTTON:
+
+			OPENFILENAME ofn;       // common dialog box structure
+
+			// Initialize OPENFILENAME
+			ZeroMemory(&ofn, sizeof(ofn));
+			ofn.lStructSize = sizeof(ofn);
+			ofn.hwndOwner = hDlg;
+			ofn.lpstrFile = szFile;
+			ofn.nMaxFile = sizeof(szFile);
+			ofn.lpstrFilter = _T("Bitmap\0*.BMP\0All\0*.*\0");
+			ofn.nFilterIndex = 1;
+			ofn.lpstrFileTitle = NULL;
+			ofn.nMaxFileTitle = 0;
+			ofn.lpstrInitialDir = NULL;
+			ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+			if (GetOpenFileName(&ofn) == TRUE)
+			{
+				// use ofn.lpstrFile
+				strcpy(lpTextureMapFileNameStr, ofn.lpstrFile);	
+				hWndBitmapEdit = GetDlgItem(hDlg, IDC_BITMAP_NAME_EDIT);
+				if ( hWndBitmapEdit ) Edit_SetText(hWndBitmapEdit, lpTextureMapFileNameStr);
+				if (strlen(lpTextureMapFileNameStr) == 0) return FALSE;
+			}
+			return TRUE;
 
 		case IDOK:
 			WriteConfig(hDlg);      //get info from controls
@@ -291,6 +339,7 @@ ScreenSaverConfigureDialog(HWND hDlg, UINT message,
 		case IDCANCEL:
 			EndDialog(hDlg, LOWORD(wParam) == IDOK);
 			return TRUE;
+
 		}
 
 	}     //end command switch
@@ -502,6 +551,7 @@ void GetConfig()
 {
 
 	HKEY key;
+	DWORD lptumble;
 	//DWORD lpdw;
 
 	if (RegOpenKeyEx(HKEY_CURRENT_USER,
@@ -510,12 +560,21 @@ void GetConfig()
 		KEY_QUERY_VALUE,
 		&key) == ERROR_SUCCESS)
 	{
-		DWORD dsize = sizeof(bTumble);
+		DWORD dsize = sizeof(lptumble);
 		DWORD dwtype = 0;
+		LSTATUS StatusReturn;
 
-		RegQueryValueEx(key, "Tumble", NULL, &dwtype,
-			(BYTE*)& bTumble, &dsize);
+		StatusReturn = RegQueryValueEx(key, "Tumble", NULL, &dwtype,
+			(BYTE*)& lptumble, &dsize);
+		bTumble = false;
+		if (lptumble) bTumble = true;
 
+		dsize = sizeof(lpTextureMapFileNameStr);
+		dwtype = 0;
+
+		StatusReturn = RegQueryValueEx(key, "Bitmap", NULL, &dwtype,
+			(BYTE*)& lpTextureMapFileNameStr, &dsize);
+		if (StatusReturn) lpTextureMapFileNameStr[0] = '\0';
 
 		//Finished with key
 		RegCloseKey(key);
@@ -532,6 +591,7 @@ void WriteConfig(HWND hDlg)
 
 	HKEY key;
 	DWORD lpdw;
+	DWORD lptumble;
 
 	if (RegCreateKeyEx(HKEY_CURRENT_USER,
 		"Software\\ICAscreensaver", //lpctstr
@@ -544,8 +604,11 @@ void WriteConfig(HWND hDlg)
 		&lpdw) == ERROR_SUCCESS)
 
 	{
+		lptumble = (DWORD)bTumble;
 		RegSetValueEx(key, "Tumble", 0, REG_DWORD,
-			(BYTE*)& bTumble, sizeof(bTumble));
+			(BYTE*)&lptumble, sizeof(lptumble));
+		RegSetValueEx(key, "Bitmap", 0, REG_SZ,
+			(LPBYTE)lpTextureMapFileNameStr, (DWORD)strlen(lpTextureMapFileNameStr)+1);
 
 		//Finished with keys
 		RegCloseKey(key);
@@ -597,7 +660,8 @@ int LoadGLTextures()                                    // Load Bitmaps And Conv
 
 	// Load the texture using any two methods
 //	  Texture = loadBMP_custom("uvtemplate.bmp");
-	Texture = loadBMP_custom("ICA-logo-on-black.bmp");
+//	Texture = loadBMP_custom("ICA-logo-on-black.bmp");
+	Texture = loadBMP_custom(lpTextureMapFileNameStr);
 	//	GLuint Texture = loadDDS("uvtemplate.DDS");
 
 	// Get a handle for our "myTextureSampler" uniform
