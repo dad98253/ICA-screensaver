@@ -179,17 +179,17 @@ const char* vs_source =
 
 
 const char* fs_source =
-"#version 330 core/n"
-"// Interpolated values from the vertex shaders/n"
-"in vec2 UV;/n"
-"// Ouput data/n"
-"out vec3 color;/n"
-"// Values that stay constant for the whole mesh./n"
-"uniform sampler2D myTextureSampler;/n"
-"void main() {/n"
-"// Output color = color of the texture at the specified UV/n"
-"color = texture(myTextureSampler, UV).rgb;/n"
-"}/n";
+"#version 330 core\n"
+"// Interpolated values from the vertex shaders\n"
+"in vec2 UV;\n"
+"// Ouput data\n"
+"out vec3 color;\n"
+"// Values that stay constant for the whole mesh.\n"
+"uniform sampler2D myTextureSampler;\n"
+"void main() {\n"
+"// Output color = color of the texture at the specified UV\n"
+"color = texture(myTextureSampler, UV).rgb;\n"
+"}\n";
 
 
 inline float Deg2Rad(float degrees) {
