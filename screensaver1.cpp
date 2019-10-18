@@ -6,7 +6,7 @@
 // copyright(c) John Kuras 2019
 // The terms and conditions for all of these changes are WTFPL
 
-
+#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
 
 #define _USE_MATH_DEFINES
 #include <math.h>
